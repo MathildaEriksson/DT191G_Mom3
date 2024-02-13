@@ -146,7 +146,7 @@ namespace DT191G_Mom3.Controllers
             // Check if the author has any books linked
             if (author != null && author.BookAuthors?.Any() == true)
             {
-                TempData["ErrorMessage"] = "Kan inte radera en författare som har böcker länkade.";
+                TempData["ErrorMessage"] = "Can't delete author that has linked books.";
                 return RedirectToAction(nameof(Index));
             }
 

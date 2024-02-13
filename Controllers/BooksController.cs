@@ -20,12 +20,21 @@ namespace DT191G_Mom3.Controllers
         }
 
         // GET: Books
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var books = _context.Books
-            .Include(b => b.BookAuthors) // Include the join table data
-            .ThenInclude(ba => ba.Author); // Then include the Author data from the join table
-            return View(await books.ToListAsync());
+            ViewData["CurrentFilter"] = searchString;
+
+            IQueryable<Book> booksQuery = _context.Books
+                .Include(b => b.BookAuthors)
+                    .ThenInclude(ba => ba.Author);
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                booksQuery = booksQuery.Where(b => b.Title.Contains(searchString));
+            }
+
+            var books = await booksQuery.ToListAsync();
+            return View(books);
         }
 
         // GET: Books/Details/5
