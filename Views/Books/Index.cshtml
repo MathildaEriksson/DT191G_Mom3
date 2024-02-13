@@ -34,7 +34,8 @@
                 @Html.DisplayFor(modelItem => item.Year)
             </td>
             <td>
-                @string.Join(", ", item.BookAuthors.Select(ba => ba.Author.Name))
+                @* Chat GPT has helped me with this expression as I had problems with possible null reference *@
+                @string.Join(", ", item.BookAuthors.Select(ba => ba.Author?.Name ?? string.Empty).Where(name => !string.IsNullOrEmpty(name))) 
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.BookId">Edit</a> |

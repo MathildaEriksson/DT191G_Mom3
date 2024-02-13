@@ -139,13 +139,23 @@ namespace DT191G_Mom3.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var author = await _context.Authors.FindAsync(id);
+            var author = await _context.Authors
+        .Include(a => a.BookAuthors) 
+        .FirstOrDefaultAsync(a => a.AuthorId == id);
+
+            // Check if the author has any books linked
+            if (author != null && author.BookAuthors?.Any() == true)
+            {
+                TempData["ErrorMessage"] = "Kan inte radera en författare som har böcker länkade.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (author != null)
             {
                 _context.Authors.Remove(author);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
