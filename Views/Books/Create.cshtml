@@ -1,4 +1,4 @@
-@model DT191G_Mom3.Models.Book
+@model DT191G_Mom3.Models.BookViewModel
 
 @{
     ViewData["Title"] = "Create";
@@ -23,6 +23,12 @@
                 <span asp-validation-for="Year" class="text-danger"></span>
             </div>
             <div class="form-group">
+                <label asp-for="SelectedAuthorIds">Authors</label>
+                <select asp-for="SelectedAuthorIds" asp-items="Model.AuthorsList" class="form-control"
+                    multiple="multiple"></select>
+                <span asp-validation-for="SelectedAuthorIds" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
         </form>
@@ -34,5 +40,7 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

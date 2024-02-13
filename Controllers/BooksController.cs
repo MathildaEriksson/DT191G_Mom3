@@ -22,7 +22,10 @@ namespace DT191G_Mom3.Controllers
         // GET: Books
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Books.ToListAsync());
+            var books = _context.Books
+            .Include(b => b.BookAuthors) // Include the join table data
+            .ThenInclude(ba => ba.Author); // Then include the Author data from the join table
+            return View(await books.ToListAsync());
         }
 
         // GET: Books/Details/5
@@ -34,7 +37,10 @@ namespace DT191G_Mom3.Controllers
             }
 
             var book = await _context.Books
+                .Include(b => b.BookAuthors)
+                    .ThenInclude(ba => ba.Author)
                 .FirstOrDefaultAsync(m => m.BookId == id);
+
             if (book == null)
             {
                 return NotFound();
@@ -46,7 +52,16 @@ namespace DT191G_Mom3.Controllers
         // GET: Books/Create
         public IActionResult Create()
         {
-            return View();
+            var model = new BookViewModel
+            {
+                // Populate AuthorsList with authors from the database
+                AuthorsList = _context.Authors.Select(a => new SelectListItem
+                {
+                    Value = a.AuthorId.ToString(),
+                    Text = a.Name
+                })
+            };
+            return View(model);
         }
 
         // POST: Books/Create
@@ -54,31 +69,59 @@ namespace DT191G_Mom3.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("BookId,Title,Year")] Book book)
+        public async Task<IActionResult> Create(BookViewModel model)
         {
             if (ModelState.IsValid)
             {
+                var book = new Book { Title = model.Title, Year = model.Year };
                 _context.Add(book);
                 await _context.SaveChangesAsync();
+
+                foreach (var authorId in model.SelectedAuthorIds)
+                {
+                    var bookAuthor = new BookAuthor { BookId = book.BookId, AuthorId = authorId };
+                    _context.BookAuthors.Add(bookAuthor);
+                }
+                await _context.SaveChangesAsync();
+
                 return RedirectToAction(nameof(Index));
             }
-            return View(book);
+            // Re-populate AuthorsList if returning to form
+            model.AuthorsList = _context.Authors.Select(a => new SelectListItem
+            {
+                Value = a.AuthorId.ToString(),
+                Text = a.Name
+            });
+            return View(model);
         }
 
         // GET: Books/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var book = await _context.Books.FindAsync(id);
-            if (book == null)
+            var book = await _context.Books
+                .Include(b => b.BookAuthors)
+                .FirstOrDefaultAsync(m => m.BookId == id);
+
+            if (book == null) return NotFound();
+
+            var selectedAuthors = book.BookAuthors?.Select(ba => ba.AuthorId).ToList() ?? new List<int>();
+
+            var model = new BookViewModel
             {
-                return NotFound();
-            }
-            return View(book);
+                BookId = book.BookId,
+                Title = book.Title,
+                Year = book.Year,
+                SelectedAuthorIds = selectedAuthors,
+                AuthorsList = _context.Authors.Select(a => new SelectListItem
+                {
+                    Value = a.AuthorId.ToString(),
+                    Text = a.Name
+                }).ToList()
+            };
+
+            return View(model);
         }
 
         // POST: Books/Edit/5
@@ -86,9 +129,9 @@ namespace DT191G_Mom3.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("BookId,Title,Year")] Book book)
+        public async Task<IActionResult> Edit(int id, BookViewModel model)
         {
-            if (id != book.BookId)
+            if (id != model.BookId)
             {
                 return NotFound();
             }
@@ -97,12 +140,40 @@ namespace DT191G_Mom3.Controllers
             {
                 try
                 {
-                    _context.Update(book);
+                    var bookToUpdate = await _context.Books
+                        .Include(b => b.BookAuthors)
+                        .FirstOrDefaultAsync(b => b.BookId == id);
+
+                    if (bookToUpdate == null)
+                    {
+                        return NotFound();
+                    }
+
+                    bookToUpdate.Title = model.Title;
+                    bookToUpdate.Year = model.Year;
+
+                    // Update authors
+                    var existingAuthors = bookToUpdate.BookAuthors.Select(ba => ba.AuthorId).ToList();
+                    var newAuthors = model.SelectedAuthorIds.Except(existingAuthors).ToList();
+                    var removedAuthors = existingAuthors.Except(model.SelectedAuthorIds).ToList();
+
+                    foreach (var authorId in newAuthors)
+                    {
+                        bookToUpdate.BookAuthors.Add(new BookAuthor { BookId = id, AuthorId = authorId });
+                    }
+
+                    foreach (var authorId in removedAuthors)
+                    {
+                        var authorToRemove = bookToUpdate.BookAuthors.FirstOrDefault(ba => ba.AuthorId == authorId);
+                        if (authorToRemove != null) bookToUpdate.BookAuthors.Remove(authorToRemove);
+                    }
+
+                    _context.Update(bookToUpdate);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!BookExists(book.BookId))
+                    if (!BookExists(model.BookId))
                     {
                         return NotFound();
                     }
@@ -113,7 +184,15 @@ namespace DT191G_Mom3.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(book);
+
+            // If we got this far, something failed, re-populate AuthorsList to show the form again
+            model.AuthorsList = _context.Authors.Select(a => new SelectListItem
+            {
+                Value = a.AuthorId.ToString(),
+                Text = a.Name
+            }).ToList();
+
+            return View(model);
         }
 
         // GET: Books/Delete/5
