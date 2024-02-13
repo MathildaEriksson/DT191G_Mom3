@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 namespace DT191G_Mom3.Models;
-public class Author
+
+public class User
 {
-    public int AuthorId { get; set; } // Primary key
+    public int UserId { get; set; }
     [Required]
     public string? Name { get; set; }
-    public List<BookAuthor>? BookAuthors { get; set; }
 }
