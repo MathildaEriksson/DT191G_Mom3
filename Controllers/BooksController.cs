@@ -30,7 +30,7 @@ namespace DT191G_Mom3.Controllers
 
             if (!String.IsNullOrEmpty(searchString))
             {
-                booksQuery = booksQuery.Where(b => b.Title.Contains(searchString));
+                booksQuery = booksQuery.Where(b => EF.Functions.Like(b.Title, $"%{searchString}%"));
             }
 
             var books = await booksQuery.ToListAsync();
